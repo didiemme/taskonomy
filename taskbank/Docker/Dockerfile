@@ -1,4 +1,6 @@
 FROM nvidia/cudagl:10.0-devel-ubuntu18.04
+RUN apt-get update
+RUN apt install software-properties-common -y
 RUN add-apt-repository ppa:deadsnakes/ppa
 RUN apt-get update && apt-get install -y \
          build-essential \
@@ -27,6 +29,6 @@ RUN apt-get update && apt-get install -y \
          libqt5svg5 \
          libqt5svg5-dev \
          libqt5opengl5-dev \
-         python3.4
+         python3.4 \
          libpng-dev &&\
     rm -rf /var/lib/apt/lists/*
