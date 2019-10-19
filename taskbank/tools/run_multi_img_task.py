@@ -99,7 +99,7 @@ def run_to_task():
     predicted, representation = training_runners['sess'].run( 
             [ m.decoder_output,  m.encoder_output ], feed_dict={m.input_images: input_img} )
 
-    utils.tasks(task, args, predicted, representation)
+    utils.tasks(task, args, predicted, args.store_name)
 
     
     ############## Clean Up ##############

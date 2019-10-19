@@ -112,7 +112,7 @@ def run_to_task():
                 predicted, representation = training_runners['sess'].run( 
                 [ m.decoder_output,  m.encoder_output ], feed_dict={m.input_images: img} )
 
-                utils.tasks(task, args, predicted, representation, img)
+                utils.tasks(task, args, predicted, os.path.join(args.store_name + line.split(os.path.sep)[-1].strip() + '.jpg'), img=img)
                 all_prediction.append(np.squeeze(predicted))
                 all_representation.append(np.squeeze(representation))
 

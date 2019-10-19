@@ -22,19 +22,19 @@ import optimizers.train_steps as train_steps
 import models.architectures as architectures
 from task_viz import *
 
-def tasks(task, args, predicted, representation, img=None):
+def tasks(task, args, predicted, store_name, representation=None, img=None):
     if task == 'class_places' or task == 'class_1000':
         synset = get_synset(task)
 
     #### Multiple Imgs Tasks
     if task == 'ego_motion':
-        ego_motion(predicted, args.store_name)
+        ego_motion(predicted, store_name)
         return
     if task == 'fix_pose':
-        cam_pose(predicted, args.store_name, is_fixated=True)
+        cam_pose(predicted, store_name, is_fixated=True)
         return   
     if task == 'non_fixated_pose':
-        cam_pose(predicted, args.store_name, is_fixated=False)
+        cam_pose(predicted, store_name, is_fixated=False)
         return
     if task == 'point_match':
         prediction = np.argmax(predicted, axis=1)
@@ -42,14 +42,14 @@ def tasks(task, args, predicted, representation, img=None):
         return       
     #### Single Img Tasks
     if task == 'segment2d' or task == 'segment25d':
-        segmentation_pca(predicted, args.store_name)
+        segmentation_pca(predicted, store_name)
         return
     if task == 'colorization':
-        single_img_colorize(predicted, img , args.store_name)
+        single_img_colorize(predicted, img , store_name)
         return
     
     if task == 'curvature':
-        curvature_single_image(predicted, args.store_name)
+        curvature_single_image(predicted, store_name)
         return
 
     just_rescale = ['autoencoder', 'denoise', 'edge2d', 
@@ -57,28 +57,28 @@ def tasks(task, args, predicted, representation, img=None):
                     'reshade', 'rgb2sfnorm' ]
 
     if task in just_rescale:
-        simple_rescale_img(predicted, args.store_name)
+        simple_rescale_img(predicted, store_name)
         return
     
     just_clip = ['rgb2depth', 'rgb2mist']
     if task in just_clip:
-        depth_single_image(predicted, args.store_name)
+        depth_single_image(predicted, store_name)
         return
     
     if task == 'inpainting_whole':
-        inpainting_bbox(predicted, args.store_name)
+        inpainting_bbox(predicted, store_name)
         return
         
     if task == 'segmentsemantic':
-        semseg_single_image( predicted, img, args.store_name)
+        semseg_single_image( predicted, img, store_name)
         return
 
     if task in ['class_1000', 'class_places']:
-        classification(predicted, synset, args.store_name)
+        classification(predicted, synset, store_name)
         return
     
     if task == 'vanishing_point':
-        _ = plot_vanishing_point_smoothed(np.squeeze(predicted), (np.squeeze(img) + 1. )/2., args.store_name, [])
+        _ = plot_vanishing_point_smoothed(np.squeeze(predicted), (np.squeeze(img) + 1. )/2., store_name, [])
         return
     
     if task == 'room_layout':
@@ -89,13 +89,13 @@ def tasks(task, args, predicted, representation, img=None):
                         0.19627420479282623, 0.014680602791251812, 0.4183827359302299,
                                     3.991778013006544, 2.703495278378409, 1.2269185938626304])
         predicted = predicted * std + mean
-        plot_room_layout(np.squeeze(predicted), (np.squeeze(img) + 1. )/2., args.store_name, [], cube_only=True)
+        plot_room_layout(np.squeeze(predicted), (np.squeeze(img) + 1. )/2., store_name, [], cube_only=True)
         return
     
     if task == 'jigsaw':
         predicted = np.argmax(predicted, axis=1)
         perm = cfg[ 'target_dict' ][ predicted[0] ]
-        show_jigsaw((np.squeeze(img) + 1. )/2., perm, args.store_name)
+        show_jigsaw((np.squeeze(img) + 1. )/2., perm, store_name)
         return
 
 def create_parser(parser_description):
