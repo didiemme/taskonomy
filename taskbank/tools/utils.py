@@ -13,14 +13,132 @@ import tensorflow as tf
 import tensorflow.contrib.slim as slim
 import threading
 import concurrent.futures
-
-
+import argparse
 import init_paths
 import data.load_ops as load_ops
 from   data.load_ops import create_input_placeholders_and_ops, get_filepaths_list
 import general_utils
 import optimizers.train_steps as train_steps
 import models.architectures as architectures
+from task_viz import *
+
+def tasks(task, args, predicted, representation, img=None):
+    if task == 'class_places' or task == 'class_1000':
+        synset = get_synset(task)
+
+    #### Multiple Imgs Tasks
+    if task == 'ego_motion':
+        ego_motion(predicted, args.store_name)
+        return
+    if task == 'fix_pose':
+        cam_pose(predicted, args.store_name, is_fixated=True)
+        return   
+    if task == 'non_fixated_pose':
+        cam_pose(predicted, args.store_name, is_fixated=False)
+        return
+    if task == 'point_match':
+        prediction = np.argmax(predicted, axis=1)
+        print('the prediction (1 stands for match, 0 for unmatch)is: ', prediction)
+        return       
+    #### Single Img Tasks
+    if task == 'segment2d' or task == 'segment25d':
+        segmentation_pca(predicted, args.store_name)
+        return
+    if task == 'colorization':
+        single_img_colorize(predicted, img , args.store_name)
+        return
+    
+    if task == 'curvature':
+        curvature_single_image(predicted, args.store_name)
+        return
+
+    just_rescale = ['autoencoder', 'denoise', 'edge2d', 
+                    'edge3d', 'keypoint2d', 'keypoint3d',
+                    'reshade', 'rgb2sfnorm' ]
+
+    if task in just_rescale:
+        simple_rescale_img(predicted, args.store_name)
+        return
+    
+    just_clip = ['rgb2depth', 'rgb2mist']
+    if task in just_clip:
+        depth_single_image(predicted, args.store_name)
+        return
+    
+    if task == 'inpainting_whole':
+        inpainting_bbox(predicted, args.store_name)
+        return
+        
+    if task == 'segmentsemantic':
+        semseg_single_image( predicted, img, args.store_name)
+        return
+
+    if task in ['class_1000', 'class_places']:
+        classification(predicted, synset, args.store_name)
+        return
+    
+    if task == 'vanishing_point':
+        _ = plot_vanishing_point_smoothed(np.squeeze(predicted), (np.squeeze(img) + 1. )/2., args.store_name, [])
+        return
+    
+    if task == 'room_layout':
+        mean = np.array([0.006072743318127848, 0.010272365569691076, -3.135909774145468, 
+                        1.5603802322235532, 5.6228218371102496e-05, -1.5669352793761442,
+                                    5.622875878174759, 4.082800262277375, 2.7713941642895956])
+        std = np.array([0.8669452525283652, 0.687915294956501, 2.080513632043758, 
+                        0.19627420479282623, 0.014680602791251812, 0.4183827359302299,
+                                    3.991778013006544, 2.703495278378409, 1.2269185938626304])
+        predicted = predicted * std + mean
+        plot_room_layout(np.squeeze(predicted), (np.squeeze(img) + 1. )/2., args.store_name, [], cube_only=True)
+        return
+    
+    if task == 'jigsaw':
+        predicted = np.argmax(predicted, axis=1)
+        perm = cfg[ 'target_dict' ][ predicted[0] ]
+        show_jigsaw((np.squeeze(img) + 1. )/2., perm, args.store_name)
+        return
+
+def create_parser(parser_description):
+    parser = argparse.ArgumentParser(description=parser_description)
+
+    parser.add_argument('--task', dest='task')
+    parser.set_defaults(task='NONE')
+
+    parser.add_argument('--img', dest='im_name')
+    parser.set_defaults(im_name='NONE')
+
+    parser.add_argument('--list', dest='imgs_list')
+    parser.set_defaults(im_name='NONE')
+
+    parser.add_argument('--store', dest='store_name')
+    parser.set_defaults(store_name='NONE')
+
+    parser.add_argument('--store-rep', dest='store_rep', action='store_true')
+    parser.set_defaults(store_rep=False)
+
+    parser.add_argument('--store-pred', dest='store_pred', action='store_true')
+    parser.set_defaults(store_pred=False)
+
+    parser.add_argument('--on-screen', dest='on_screen', action='store_true')
+    parser.set_defaults(on_screen=False)
+
+    return parser 
+
+def generate_cfg(task):
+    repo_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
+    CONFIG_DIR = os.path.join(repo_dir, 'experiments/final', task)
+    ############## Load Configs ##############
+    import data.load_ops as load_ops
+    from   general_utils import RuntimeDeterminedEnviromentVars
+    cfg = load_config( CONFIG_DIR, nopause=True )
+    RuntimeDeterminedEnviromentVars.register_dict( cfg )
+    cfg['batch_size'] = 1
+    if 'batch_size' in cfg['encoder_kwargs']:
+        cfg['encoder_kwargs']['batch_size'] = 1
+    cfg['model_path'] = os.path.join( repo_dir, 'temp', task, 'model.permanent-ckpt' )
+    cfg['root_dir'] = repo_dir
+    return cfg
+    
 
 def get_available_devices():
     from tensorflow.python.client import device_lib

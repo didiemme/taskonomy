@@ -28,7 +28,6 @@ import transforms3d
 import math
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw, ImageFont
-from task_viz import *
 import random
 import utils
 import models.architectures as architectures
@@ -37,49 +36,15 @@ from   data.load_ops import rescale_image
 import utils
 import lib.data.load_ops as load_ops
 
-parser = argparse.ArgumentParser(description='Viz Single Task')
 
-parser.add_argument('--task', dest='task')
-parser.set_defaults(task='NONE')
-
-parser.add_argument('--img', dest='im_name')
-parser.set_defaults(im_name='NONE')
-
-parser.add_argument('--store', dest='store_name')
-parser.set_defaults(store_name='NONE')
-
-parser.add_argument('--store-rep', dest='store_rep', action='store_true')
-parser.set_defaults(store_rep=False)
-
-parser.add_argument('--store-pred', dest='store_pred', action='store_true')
-parser.set_defaults(store_pred=False)
-
-parser.add_argument('--on-screen', dest='on_screen', action='store_true')
-parser.set_defaults(on_screen=False)
-
+parser = utils.create_parser("Viz Multiple Task")
 tf.logging.set_verbosity(tf.logging.ERROR)
-
 list_of_tasks = 'ego_motion \
 fix_pose \
 non_fixated_pose \
 point_match'
 list_of_tasks = list_of_tasks.split()
 
-def generate_cfg(task):
-    repo_dir = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
-    CONFIG_DIR = os.path.join(repo_dir, 'experiments/final', task)
-    ############## Load Configs ##############
-    import utils
-    import data.load_ops as load_ops
-    from   general_utils import RuntimeDeterminedEnviromentVars
-    cfg = utils.load_config( CONFIG_DIR, nopause=True )
-    RuntimeDeterminedEnviromentVars.register_dict( cfg )
-    cfg['batch_size'] = 1
-    if 'batch_size' in cfg['encoder_kwargs']:
-        cfg['encoder_kwargs']['batch_size'] = 1
-    cfg['model_path'] = os.path.join( repo_dir, 'temp', task, 'model.permanent-ckpt' )
-    cfg['root_dir'] = repo_dir
-    return cfg
 
 def run_to_task():
     import general_utils
@@ -101,7 +66,7 @@ def run_to_task():
     if task not in list_of_tasks:
         raise ValueError('Task not supported')
 
-    cfg = generate_cfg(task)
+    cfg = utils.generate_cfg(task)
 
     input_img = np.empty((len(imgs),256,256,3), dtype=np.float32)
     for i,imname in enumerate(imgs):
@@ -134,33 +99,13 @@ def run_to_task():
     predicted, representation = training_runners['sess'].run( 
             [ m.decoder_output,  m.encoder_output ], feed_dict={m.input_images: input_img} )
 
-    if args.store_rep:
-        s_name, file_extension = os.path.splitext(args.store_name)
-        with open('{}.npy'.format(s_name), 'wb') as fp:
-            np.save(fp, np.squeeze(representation))
+    utils.tasks(task, args, predicted, representation)
 
-    if args.store_pred:
-        s_name, file_extension = os.path.splitext(args.store_name)
-        with open('{}_pred.npy'.format(s_name), 'wb') as fp:
-            np.save(fp, np.squeeze(predicted))
-
-    if task == 'ego_motion':
-        ego_motion(predicted, args.store_name)
-        return
-    if task == 'fix_pose':
-        cam_pose(predicted, args.store_name, is_fixated=True)
-        return   
-    if task == 'non_fixated_pose':
-        cam_pose(predicted, args.store_name, is_fixated=False)
-        return
-    if task == 'point_match':
-        prediction = np.argmax(predicted, axis=1)
-        print('the prediction (1 stands for match, 0 for unmatch)is: ', prediction)
-        return       
+    
     ############## Clean Up ##############
     training_runners[ 'coord' ].request_stop()
     training_runners[ 'coord' ].join()
-    print("Done: {}".format(config_name))
+    # print("Done: {}".format(config_name))
 
     ############## Reset graph and paths ##############            
     tf.reset_default_graph()
