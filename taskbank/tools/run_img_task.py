@@ -108,7 +108,8 @@ def run_to_task():
             all_representation = []
 
             for line in imgs_list:
-                img = prepare_image(task, line.strip(), cfg) 
+                filename = args.dir_name + line.strip().split(',')[0] # FIXME
+                img = prepare_image(task, filename, cfg) 
                 predicted, representation = training_runners['sess'].run( 
                 [ m.decoder_output,  m.encoder_output ], feed_dict={m.input_images: img} )
 

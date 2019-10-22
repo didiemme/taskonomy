@@ -102,16 +102,14 @@ def create_parser(parser_description):
     parser = argparse.ArgumentParser(description=parser_description)
 
     parser.add_argument('--task', dest='task')
-    parser.set_defaults(task='NONE')
 
     parser.add_argument('--img', dest='im_name')
-    parser.set_defaults(im_name='NONE')
 
     parser.add_argument('--list', dest='imgs_list')
-    parser.set_defaults(im_name='NONE')
+
+    parser.add_argument('--dir-name', dest='dir_name')
 
     parser.add_argument('--store', dest='store_name')
-    parser.set_defaults(store_name='NONE')
 
     parser.add_argument('--store-rep', dest='store_rep', action='store_true')
     parser.set_defaults(store_rep=False)
